@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>投票システム</title>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+body {
+  font-family: sans-serif;
+  text-align: center;
+  background: linear-gradient(135deg,#667eea,#764ba2);
+  color: white;
+}
+
+button {
+  font-size: 22px;
+  padding: 15px;
+  margin: 10px;
+  border-radius: 12px;
+  border: none;
+}
+
+.agree { background: red; }
+.disagree { background: blue; }
+.absent { background: gray; }
+
+.card {
+  background: rgba(255,255,255,0.1);
+  padding: 20px;
+  border-radius: 15px;
+  margin: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="setup" class="card">
+<h2>QR読み取り</h2>
+<div id="reader" style="width:300px;margin:auto;"></div>
+<p id="setupText"></p>
+<button onclick="confirmSetup()">次へ</button>
+</div>
+
+<div id="codeInput" class="card" style="display:none;">
+<h2>投票コード入力</h2>
+<input id="voteCode" placeholder="例:0248" style="font-size:20px;">
+<br><br>
+<button onclick="startVoting()">開始</button>
+</div>
+
+<div id="voteArea" class="card" style="display:none;">
+<h2 id="progress"></h2>
+<h3 id="studentId"></h3>
+
+<button class="agree" onclick="vote('賛成')">賛成</button>
+<button class="disagree" onclick="vote('反対')">反対</button>
+<button class="absent" onclick="vote('欠席')">欠席</button>
+
+<br>
+<button onclick="goBack()">戻る</button>
+</div>
+
+<div id="resultArea" class="card" style="display:none;">
+<h2>結果</h2>
+<p id="resultText"></p>
+
+<button onclick="mergeData()">子機連携</button>
+<button onclick="submitData()">送信</button>
+<div id="qrcode"></div>
+</div>
+
+<script>
+let cls="", start=1, end=0;
+let current, votes=[];
+let agree=0, disagree=0, absent=0;
+let isHelp=false;
+
+// QR読み取り
+function onScanSuccess(text){
+  let data=JSON.parse(text);
+  cls=data.class;
+  start=data.start;
+  end=data.end;
+  document.getElementById("setupText").innerText =
+    `${cls} ${start}〜${end}番`;
+}
+
+new Html5QrcodeScanner("reader").render(onScanSuccess);
+
+// 設定確定
+function confirmSetup(){
+  current=start;
+  document.getElementById("setup").style.display="none";
+  document.getElementById("codeInput").style.display="block";
+}
+
+// 投票開始
+function startVoting(){
+  let code=document.getElementById("voteCode").value;
+
+  if(code.endsWith("help")){
+    isHelp=true;
+    showHelp();
+    return;
+  }
+
+  document.getElementById("codeInput").style.display="none";
+  document.getElementById("voteArea").style.display="block";
+  update();
+}
+
+// 表示更新
+function update(){
+  document.getElementById("progress").innerText =
+    `${current} / ${end}`;
+  document.getElementById("studentId").innerText =
+    `${cls}${current}`;
+}
+
+// 投票
+function vote(type){
+  votes.push(type);
+
+  if(type==="賛成") agree++;
+  if(type==="反対") disagree++;
+  if(type==="欠席") absent++;
+
+  current++;
+
+  if(current>end){
+    showResult();
+  }else{
+    update();
+  }
+}
+
+// 戻る
+function goBack(){
+  if(current===start){
+    alert("戻れません");
+    return;
+  }
+
+  if(!confirm("本当に戻りますか？")) return;
+
+  current--;
+  let last=votes.pop();
+
+  if(last==="賛成") agree--;
+  if(last==="反対") disagree--;
+  if(last==="欠席") absent--;
+
+  update();
+}
+
+// 結果
+function showResult(){
+  document.getElementById("voteArea").style.display="none";
+  document.getElementById("resultArea").style.display="block";
+
+  document.getElementById("resultText").innerText =
+    `賛成:${agree} 反対:${disagree} 欠席:${absent}`;
+}
+
+// 子機連携（簡易）
+function mergeData(){
+  let code=prompt("子機2コード入力");
+  if(!code) return;
+
+  // 仮：単純加算（実際は分解）
+  alert("合体成功（仮）");
+}
+
+// 送信
+function submitData(){
+  let data={
+    class:cls,
+    agree:agree,
+    disagree:disagree,
+    absent:absent
+  };
+
+  fetch("URL",{
+    method:"POST",
+    body:JSON.stringify(data)
+  })
+  .then(()=>{
+    document.body.innerHTML="<h1>送信成功</h1>";
+    setTimeout(()=>location.reload(),1000);
+  })
+  .catch(()=>{
+    alert("失敗、QRで提出");
+    new QRCode(document.getElementById("qrcode"),
+      `${cls},${agree},${disagree},${absent}`);
+  });
+}
+
+// help
+function showHelp(){
+  alert(`確認\n${cls}\n賛成:${agree}\n反対:${disagree}\n欠席:${absent}`);
+}
+</script>
+
+</body>
+</html>
