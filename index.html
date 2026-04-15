@@ -7,11 +7,31 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
 body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   font-family: sans-serif;
-  text-align: center;
   background: linear-gradient(135deg,#667eea,#764ba2);
   color: white;
+}
+
+.container {
+  width: 900px;
+  max-width: 95%;
+}
+
+.card {
+  background: rgba(255,255,255,0.1);
+  padding: 20px;
+  border-radius: 15px;
+  margin: auto;
+  max-width: 600px;
 }
 
 button {
@@ -20,30 +40,38 @@ button {
   margin: 10px;
   border-radius: 12px;
   border: none;
+  transition: 0.2s;
 }
 
-.agree { background: red; }
-.disagree { background: blue; }
-.absent { background: gray; }
+button:active {
+  transform: scale(0.95);
+}
 
-.card {
-  background: rgba(255,255,255,0.1);
-  padding: 20px;
-  border-radius: 15px;
-  margin: 20px;
+.agree { background: #ff4b5c; }
+.disagree { background: #4b7bff; }
+.absent { background: #888; }
+
+#studentId {
+  font-size: 28px;
+  font-weight: bold;
 }
 </style>
 </head>
 
 <body>
+<div class="container">
 
+<!-- 初期設定 -->
 <div id="setup" class="card">
 <h2>QR読み取り</h2>
 <div id="reader" style="width:300px;margin:auto;"></div>
+<br>
+<button onclick="startQR()">QR開始</button>
 <p id="setupText"></p>
 <button onclick="confirmSetup()">次へ</button>
 </div>
 
+<!-- コード入力 -->
 <div id="codeInput" class="card" style="display:none;">
 <h2>投票コード入力</h2>
 <input id="voteCode" placeholder="例:0248" style="font-size:20px;">
@@ -51,6 +79,7 @@ button {
 <button onclick="startVoting()">開始</button>
 </div>
 
+<!-- 投票画面 -->
 <div id="voteArea" class="card" style="display:none;">
 <h2 id="progress"></h2>
 <h3 id="studentId"></h3>
@@ -63,6 +92,7 @@ button {
 <button onclick="goBack()">戻る</button>
 </div>
 
+<!-- 結果 -->
 <div id="resultArea" class="card" style="display:none;">
 <h2>結果</h2>
 <p id="resultText"></p>
@@ -72,23 +102,35 @@ button {
 <div id="qrcode"></div>
 </div>
 
+</div>
+
 <script>
 let cls="", start=1, end=0;
 let current, votes=[];
 let agree=0, disagree=0, absent=0;
-let isHelp=false;
 
-// QR読み取り
+let scanner;
+
+// QR開始
+function startQR(){
+  scanner = new Html5QrcodeScanner("reader",{fps:10,qrbox:250});
+  scanner.render(onScanSuccess);
+}
+
+// QR読み取り成功
 function onScanSuccess(text){
   let data=JSON.parse(text);
   cls=data.class;
   start=data.start;
   end=data.end;
+
   document.getElementById("setupText").innerText =
     `${cls} ${start}〜${end}番`;
-}
 
-new Html5QrcodeScanner("reader").render(onScanSuccess);
+  if(scanner){
+    scanner.clear();
+  }
+}
 
 // 設定確定
 function confirmSetup(){
@@ -102,7 +144,6 @@ function startVoting(){
   let code=document.getElementById("voteCode").value;
 
   if(code.endsWith("help")){
-    isHelp=true;
     showHelp();
     return;
   }
@@ -162,15 +203,14 @@ function showResult(){
   document.getElementById("resultArea").style.display="block";
 
   document.getElementById("resultText").innerText =
-    `賛成:${agree} 反対:${disagree} 欠席:${absent}`;
+    `賛成:${agree} / 反対:${disagree} / 欠席:${absent}`;
 }
 
-// 子機連携（簡易）
+// 子機連携（仮）
 function mergeData(){
   let code=prompt("子機2コード入力");
   if(!code) return;
 
-  // 仮：単純加算（実際は分解）
   alert("合体成功（仮）");
 }
 
@@ -188,11 +228,11 @@ function submitData(){
     body:JSON.stringify(data)
   })
   .then(()=>{
-    document.body.innerHTML="<h1>送信成功</h1>";
+    document.body.innerHTML="<h1>送信成功！</h1>";
     setTimeout(()=>location.reload(),1000);
   })
   .catch(()=>{
-    alert("失敗、QRで提出");
+    alert("送信失敗、QRで提出");
     new QRCode(document.getElementById("qrcode"),
       `${cls},${agree},${disagree},${absent}`);
   });
