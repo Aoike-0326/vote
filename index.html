@@ -113,11 +113,8 @@ body {
 
 <!-- QR -->
 <div id="setup" class="card">
-
 <h2>QR読み取り</h2>
-
 <div id="reader" style="width:300px;margin:auto;"></div>
-
 <button id="qrStartBtn" class="qr-btn" onclick="startQR()">QR開始</button>
 
 <div id="afterScan" style="display:none;">
@@ -127,7 +124,6 @@ body {
   <button class="qr-btn" onclick="confirmSetup()">次へ</button>
   <button class="qr-btn" onclick="resetQR()">再スキャン</button>
 </div>
-
 </div>
 
 <!-- コード -->
@@ -136,25 +132,6 @@ body {
 <input id="voteCode" style="font-size:32px;">
 <br><br>
 <button class="qr-btn" onclick="startVoting()">開始</button>
-
-<!-- 子機2QR（最初は非表示） -->
-<div id="child2Area" style="display:none; margin-top:30px;">
-  <div style="display:flex; justify-content:center; align-items:center; gap:30px;">
-
-    <div id="child2QR"></div>
-
-    <div style="text-align:left;">
-      <div style="font-size:28px; font-weight:bold;">
-        評議委員別端末用QR
-      </div>
-      <div style="font-size:18px; margin-top:10px;">
-        もう1人の評議委員が同じサイトでこのQRを読み込んでください
-      </div>
-    </div>
-
-  </div>
-</div>
-
 </div>
 
 <!-- 投票 -->
@@ -164,6 +141,21 @@ body {
 
 <div id="progress"></div>
 <div id="studentId"></div>
+
+<!-- ★ QR表示ここに移動 -->
+<div id="child2Area" style="display:none; margin:10px 0;">
+  <div style="display:flex; justify-content:center; align-items:center; gap:20px;">
+    <div id="child2QR"></div>
+    <div style="text-align:left;">
+      <div style="font-size:20px; font-weight:bold;">
+        評議委員別端末用QR
+      </div>
+      <div style="font-size:14px;">
+        もう1人の評議委員がこのQRを読み込んでください
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="vote-main">
   <button class="vote-half agree" onclick="vote('賛成')">賛成</button>
@@ -243,20 +235,13 @@ function onScanSuccess(text){
   }
 }
 
-// 再スキャン
-function resetQR(){
-  document.getElementById("afterScan").style.display="none";
-  document.getElementById("qrStartBtn").style.display="inline-block";
-}
-
 // 次へ
 function confirmSetup(){
-
   if(role==="child2"){
     if(!confirm(`${start}番からでOK？`)) return;
 
     if(presetCode){
-      startVotingDirect(presetCode);
+      startVotingDirect();
       return;
     }
   }
@@ -267,7 +252,7 @@ function confirmSetup(){
   document.getElementById("codeInput").style.display="block";
 }
 
-// 子機2QR生成（ここが重要）
+// QR生成（ここが重要）
 function generateChild2QR(code){
 
   if(!ranges.length) return;
@@ -286,12 +271,27 @@ function generateChild2QR(code){
   document.getElementById("child2QR").innerHTML = "";
   new QRCode(document.getElementById("child2QR"), qrText);
 
-  // 表示ON
   document.getElementById("child2Area").style.display="block";
 }
 
-// 直接開始（子機2）
-function startVotingDirect(code){
+// 投票開始（子機1）
+function startVoting(){
+  let code=document.getElementById("voteCode").value;
+
+  if(role==="child1"){
+    generateChild2QR(code);
+  }
+
+  current = start;
+
+  document.getElementById("codeInput").style.display="none";
+  document.getElementById("voteArea").style.display="flex";
+
+  update();
+}
+
+// 子機2
+function startVotingDirect(){
   current = start;
 
   document.getElementById("setup").style.display="none";
@@ -300,37 +300,12 @@ function startVotingDirect(code){
   update();
 }
 
-// 学籍番号
-function getStudentId(){
-  let [g,c]=cls.split("-");
-  return `${g}${c}${String(current).padStart(2,"0")}`;
-}
-
-// 投票開始（子機1）
-function startVoting(){
-  let code=document.getElementById("voteCode").value;
-
-  if(code.endsWith("help")){
-    alert(`確認\n賛成:${agree} 反対:${disagree} 欠席:${absent}`);
-    return;
-  }
-
-  // ★ここでQR生成（修正ポイント）
-  if(role==="child1"){
-    generateChild2QR(code);
-  }
-
-  document.getElementById("codeInput").style.display="none";
-  document.getElementById("voteArea").style.display="flex";
-  update();
-}
-
 // 更新
 function update(){
   document.getElementById("progress").innerText =
     `${current} / ${end}`;
   document.getElementById("studentId").innerText =
-    getStudentId();
+    `${cls}${String(current).padStart(2,"0")}`;
 }
 
 // 投票
