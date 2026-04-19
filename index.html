@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Rösta/ルスタ</title>
+<title>Rösta│ルスタ</title>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -142,7 +142,7 @@ body {
 <div id="progress"></div>
 <div id="studentId"></div>
 
-<!-- QR表示 -->
+<!-- 子機2QR -->
 <div id="child2Area" style="display:none; margin:10px 0;">
   <div style="display:flex; justify-content:center; align-items:center; gap:20px;">
     
@@ -176,6 +176,10 @@ body {
 <div id="resultArea" class="card" style="display:none;">
 <h2>結果</h2>
 <p id="resultText"></p>
+
+<button onclick="startMergeQR()">子機2読み取り</button>
+<div id="mergeReader" style="width:300px;margin:auto;"></div>
+
 <div id="qrcode"></div>
 </div>
 
@@ -186,7 +190,7 @@ let cls="", total=0, ranges=[], role="";
 let start=1, end=0, current;
 let votes=[];
 let agree=0, disagree=0, absent=0;
-let presetCode="";
+let voteCodeGlobal="";
 let html5QrCode;
 
 // QR開始
@@ -214,7 +218,7 @@ function onScanSuccess(text){
   role = data.role || "child1";
 
   if(data.voteCode){
-    presetCode = data.voteCode;
+    voteCodeGlobal = data.voteCode;
   }
 
   let r = ranges[0];
@@ -238,10 +242,8 @@ function onScanSuccess(text){
 
 // 次へ
 function confirmSetup(){
-
   if(role==="child2"){
     if(!confirm(`${start}番からでOK？`)) return;
-
     startVotingDirect();
     return;
   }
@@ -251,9 +253,8 @@ function confirmSetup(){
   document.getElementById("codeInput").style.display="block";
 }
 
-// 子機2QR生成（修正済み）
+// 子機2QR生成
 function generateChild2QR(code){
-
   let data = {
     class: cls,
     total: total,
@@ -279,13 +280,15 @@ function generateChild2QR(code){
 function startVoting(){
   let code=document.getElementById("voteCode").value;
 
+  voteCodeGlobal = code;
+
   generateChild2QR(code);
 
   document.getElementById("codeInput").style.display="none";
   document.getElementById("voteArea").style.display="flex";
 }
 
-// QR後に開始
+// QR後開始
 function startVoteAfterQR(){
   if(!confirm("QRを閉じて投票を開始しますか？")) return;
 
@@ -361,8 +364,55 @@ function showResult(){
   document.getElementById("resultText").innerText =
     `賛成:${agree} 反対:${disagree} 欠席:${absent}`;
 
-  let code = `${cls}|${agree}|${disagree}|${absent}`;
+  let code = `${cls}|${voteCodeGlobal}|${agree}|${disagree}|${absent}`;
+
+  document.getElementById("qrcode").innerHTML = "";
   new QRCode(document.getElementById("qrcode"), code);
+}
+
+// 合体QR開始
+function startMergeQR(){
+  let qr = new Html5Qrcode("mergeReader");
+
+  qr.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 250 },
+    (text)=>{
+      mergeData(text);
+      qr.stop();
+    }
+  );
+}
+
+// 合体処理
+function mergeData(text){
+  let parts = text.split("|");
+
+  if(parts.length !== 5){
+    alert("形式エラー");
+    return;
+  }
+
+  let [cls2, code2, a, d, ab] = parts;
+
+  if(cls2 !== cls){
+    alert("クラス違う！");
+    return;
+  }
+
+  if(code2 !== voteCodeGlobal){
+    alert("投票コード違う！");
+    return;
+  }
+
+  agree += Number(a);
+  disagree += Number(d);
+  absent += Number(ab);
+
+  document.getElementById("resultText").innerText =
+    `合計\n賛成:${agree} 反対:${disagree} 欠席:${absent}`;
+
+  alert("合体成功！");
 }
 </script>
 
