@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Rösta│ルスタ1</title>
+<title>Rösta│ルスタ2</title>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -186,7 +186,7 @@ body {
 </div>
 
 <script>
-let cls="", total=0, ranges=[], role="";
+let cls="", ranges=[], role="";
 let start=1, end=0, current;
 let votes=[];
 let agree=0, disagree=0, absent=0;
@@ -211,7 +211,7 @@ function startQR(){
 // QR読み取り
 function onScanSuccess(text){
 
-  // 子機2QR（軽量）
+  // 子機2QR
   if(text.includes("|")){
     let parts = text.split("|");
 
@@ -225,9 +225,7 @@ function onScanSuccess(text){
     let data = JSON.parse(text);
 
     cls = data.class;
-    total = data.total || 0;
     ranges = data.ranges || [];
-    role = data.role || "child1";
 
     let r = ranges[0];
     start = r.start;
@@ -249,6 +247,11 @@ function onScanSuccess(text){
   }
 }
 
+// 再スキャン
+function resetQR(){
+  location.reload();
+}
+
 // 次へ
 function confirmSetup(){
   if(role==="child2"){
@@ -257,17 +260,15 @@ function confirmSetup(){
     return;
   }
 
-  current=start;
   document.getElementById("setup").style.display="none";
   document.getElementById("codeInput").style.display="block";
 }
 
-// 子機2QR生成（軽量）
+// 子機2QR生成
 function generateChild2QR(code){
 
-  // ★安全チェック
   if(!ranges || ranges.length < 2){
-    alert("子機2の範囲が見つかりません");
+    alert("子機2の範囲がありません");
     return;
   }
 
@@ -280,7 +281,6 @@ function generateChild2QR(code){
   new QRCode(document.getElementById("child2QR"), data);
 
   document.getElementById("child2Area").style.display="block";
-}
 }
 
 // 投票開始（子機1）
@@ -297,7 +297,7 @@ function startVoting(){
 
 // QR後開始
 function startVoteAfterQR(){
-  if(!confirm("QRを閉じて投票を開始しますか？")) return;
+  if(!confirm("QRを閉じて投票開始？")) return;
 
   current = start;
   document.getElementById("child2Area").style.display="none";
@@ -368,7 +368,6 @@ function showResult(){
   document.getElementById("voteArea").style.display="none";
   document.getElementById("resultArea").style.display="block";
 
-  // 子機2はボタン消す
   if(role==="child2"){
     document.getElementById("mergeBtn").style.display="none";
   }
