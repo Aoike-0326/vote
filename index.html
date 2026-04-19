@@ -142,10 +142,12 @@ body {
 <div id="progress"></div>
 <div id="studentId"></div>
 
-<!-- ★ QR表示ここに移動 -->
+<!-- QR表示 -->
 <div id="child2Area" style="display:none; margin:10px 0;">
   <div style="display:flex; justify-content:center; align-items:center; gap:20px;">
+    
     <div id="child2QR"></div>
+
     <div style="text-align:left;">
       <div style="font-size:20px; font-weight:bold;">
         評議委員別端末用QR
@@ -154,15 +156,19 @@ body {
         もう1人の評議委員がこのQRを読み込んでください
       </div>
     </div>
+
   </div>
+
+  <button class="qr-btn" onclick="startVoteAfterQR()">次へ（投票開始）</button>
 </div>
 
-<div class="vote-main">
+<!-- 投票ボタン -->
+<div class="vote-main" id="voteButtons" style="display:none;">
   <button class="vote-half agree" onclick="vote('賛成')">賛成</button>
   <button class="vote-half disagree" onclick="vote('反対')">反対</button>
 </div>
 
-<button class="absent" onclick="vote('欠席')">欠席</button>
+<button class="absent" id="absentBtn" style="display:none;" onclick="vote('欠席')">欠席</button>
 
 </div>
 
@@ -176,10 +182,10 @@ body {
 </div>
 
 <script>
-let cls="", start=1, end=0, total=0, role="";
-let current, votes=[];
+let cls="", total=0, ranges=[], role="";
+let start=1, end=0, current;
+let votes=[];
 let agree=0, disagree=0, absent=0;
-let ranges=[];
 let presetCode="";
 let html5QrCode;
 
@@ -211,15 +217,10 @@ function onScanSuccess(text){
     presetCode = data.voteCode;
   }
 
-  if(ranges.length){
-    let r = ranges[0];
-    start = r.start;
-    end = r.end;
-    role = r.role;
-  } else {
-    start = data.start;
-    end = data.end;
-  }
+  let r = ranges[0];
+  start = r.start;
+  end = r.end;
+  role = r.role;
 
   document.getElementById("afterScan").style.display="block";
 
@@ -237,32 +238,32 @@ function onScanSuccess(text){
 
 // 次へ
 function confirmSetup(){
+
   if(role==="child2"){
     if(!confirm(`${start}番からでOK？`)) return;
 
-    if(presetCode){
-      startVotingDirect();
-      return;
-    }
+    startVotingDirect();
+    return;
   }
 
   current=start;
-
   document.getElementById("setup").style.display="none";
   document.getElementById("codeInput").style.display="block";
 }
 
-// QR生成（ここが重要）
+// 子機2QR生成（修正済み）
 function generateChild2QR(code){
-
-  if(!ranges.length) return;
 
   let data = {
     class: cls,
     total: total,
-    start: ranges[1].start,
-    end: ranges[1].end,
-    role: "child2",
+    ranges: [
+      {
+        start: ranges[1].start,
+        end: ranges[1].end,
+        role: "child2"
+      }
+    ],
     voteCode: code
   };
 
@@ -278,25 +279,35 @@ function generateChild2QR(code){
 function startVoting(){
   let code=document.getElementById("voteCode").value;
 
-  if(role==="child1"){
-    generateChild2QR(code);
-  }
-
-  current = start;
+  generateChild2QR(code);
 
   document.getElementById("codeInput").style.display="none";
   document.getElementById("voteArea").style.display="flex";
-
-  update();
 }
 
-// 子機2
+// QR後に開始
+function startVoteAfterQR(){
+  if(!confirm("QRを閉じて投票を開始しますか？")) return;
+
+  current = start;
+  document.getElementById("child2Area").style.display="none";
+  showVotingUI();
+}
+
+// 子機2開始
 function startVotingDirect(){
   current = start;
 
   document.getElementById("setup").style.display="none";
   document.getElementById("voteArea").style.display="flex";
 
+  showVotingUI();
+}
+
+// UI表示
+function showVotingUI(){
+  document.getElementById("voteButtons").style.display="flex";
+  document.getElementById("absentBtn").style.display="block";
   update();
 }
 
@@ -304,8 +315,10 @@ function startVotingDirect(){
 function update(){
   document.getElementById("progress").innerText =
     `${current} / ${end}`;
+
+  let [g,c]=cls.split("-");
   document.getElementById("studentId").innerText =
-    `${cls}${String(current).padStart(2,"0")}`;
+    `${g}${c}${String(current).padStart(2,"0")}`;
 }
 
 // 投票
